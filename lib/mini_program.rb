@@ -4,6 +4,7 @@ require "mini_program/client"
 require "mini_program/msg"
 require "r_logger"
 require "service_result"
+require "redis"
 
 module MiniProgram
   # Your code goes here...
