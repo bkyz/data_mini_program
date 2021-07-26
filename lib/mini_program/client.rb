@@ -7,7 +7,7 @@ module MiniProgram
       @app_secret = app_secret
     end
 
-    def access_token
+    def access_token(cache: false)
       access_token = redis.get("mp-#{appid}-access-token")
       return access_token if access_token.present?
 
