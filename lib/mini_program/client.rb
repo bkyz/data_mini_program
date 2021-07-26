@@ -7,9 +7,9 @@ module MiniProgram
       @app_secret = app_secret
     end
 
-    def access_token(cache: false)
+    def access_token(fresh: false)
       access_token = redis.get("mp-#{appid}-access-token")
-      return access_token if access_token.present?
+      return access_token if access_token.present? && !fresh
 
       api = "https://api.weixin.qq.com/cgi-bin/token"
       params = {
