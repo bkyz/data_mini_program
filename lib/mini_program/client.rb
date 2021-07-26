@@ -46,7 +46,7 @@ module MiniProgram
 
       response = get(api, params)
 
-      result = JSON.parse(response.body)
+      result = JSON.parse(response)
 
       if result["errcode"]
         logger.error <<~ERROR
