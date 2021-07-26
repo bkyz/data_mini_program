@@ -8,7 +8,7 @@ module MiniProgram
     end
 
     def access_token
-      access_token = redis.get("mp-#{@appid}-access-token")
+      access_token = redis.get("mp-#{appid}-access-token")
       return access_token if access_token.present?
 
       api = "https://api.weixin.qq.com/cgi-bin/token"
@@ -54,10 +54,10 @@ module MiniProgram
         api: #{api}
         result: #{result}
         ERROR
-        return ServiceResult.new(errors: result, message: result["errmsg"], message_type: :error)
+        return MiniProgram::ServiceResult.new(errors: result, message: result["errmsg"], message_type: :error)
       end
 
-      ServiceResult.new(success: true, data: result.with_indifferent_access)
+      MiniProgram::ServiceResult.new(success: true, data: result.with_indifferent_access)
     end
 
     # 发送订阅消息
@@ -88,7 +88,7 @@ module MiniProgram
 
       phone_num = JSON.parse(data)["phoneNumber"]
 
-      ServiceResult.new(success: true, data: {
+      MiniProgram::ServiceResult.new(success: true, data: {
         open_id: open_id,
         phone_num: phone_num
       }.with_indifferent_access)
@@ -145,7 +145,7 @@ module MiniProgram
     end
 
     def logger
-      @logger ||= RLogger.make("mini_program")
+      @logger ||= MiniProgram::RLogger.make("mini_program")
     end
 
     def redis
@@ -153,11 +153,11 @@ module MiniProgram
     end
 
     def access_token_store_key
-      "mp-#{@appid}-access-token"
+      "mp-#{appid}-access-token"
     end
 
     def msg_logger
-      @msg_logger ||= RLogger.make("wx_msg")
+      @msg_logger ||= MiniProgram::RLogger.make("wx_msg")
     end
 
   end
