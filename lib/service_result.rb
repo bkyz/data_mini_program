@@ -6,13 +6,15 @@ module MiniProgram
                   :message,
                   :message_type
 
+    delegate :[], :[]=, to: :data
+
     def initialize(success: false,
                    errors: nil,
                    message: nil,
                    message_type: nil,
-                   data: nil)
+                   data: {})
       self.success = success
-      self.data = data
+      self.data = (data.presence || {}).with_indifferent_access
       self.errors = errors.is_a?(Enumerable) ? errors : [errors]
       self.message = message
       self.message_type = message_type
@@ -26,10 +28,12 @@ module MiniProgram
 
     def on_success
       yield(self) if success?
+      self
     end
 
     def on_failure
       yield(self) if failure?
+      self
     end
 
     def get_message_type

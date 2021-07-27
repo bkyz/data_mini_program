@@ -1,7 +1,6 @@
 source 'https://rubygems.org'
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
-gem "redis"
 # Specify your gem's dependencies in mini_program.gemspec.
 gemspec
 

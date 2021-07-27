@@ -5,12 +5,40 @@ module MiniProgram
     def initialize(appid: config.appid, app_secret: config.app_secret)
       @appid = appid
       @app_secret = app_secret
+
+      if appid == 'your appid'
+        warn "\e[33m" + "*" * 80 + "\e[0m"
+        warn "\e[33m警告: 请将 config/initializer/mini_program.rb 中的 appid 修改成你实际的appid\e[0m"
+        warn "\e[33m" + "*" * 80 + "\e[0m"
+      end
+
+      if app_secret == 'your app_secret'
+        warn "\e[33m" + "*" * 80 + "\e[0m"
+        warn "\e[33m警告: 请将 config/initializer/mini_program.rb 中的 app_secret 修改成你实际的app_secret\e[0m"
+        warn "\e[33m" + "*" * 80 + "\e[0m"
+      end
     end
 
-    def access_token(fresh: false)
+    def get_access_token(fresh: false)
       access_token = redis.get("mp-#{appid}-access-token")
-      return access_token if access_token.present? && !fresh
+      if access_token.present? && !fresh
+        return MiniProgram::ServiceResult.new(success: true, data: {access_token: access_token})
+      end
 
+      result = request_access_token
+      if result.success?
+        redis.setex "mp-#{appid}-access-token",  1.5.hours.to_i, access_token
+      end
+
+      yield result if block_given?
+
+      result
+    end
+
+    # 调用微信 api 获取 access_token
+    #
+    # @return MiniProgram::ServiceResult
+    def request_access_token
       api = "https://api.weixin.qq.com/cgi-bin/token"
       params = {
         appid: appid,
@@ -28,13 +56,15 @@ module MiniProgram
         api: #{api} 
         error: #{result}
         ERROR
-        raise Exceptions::MiniProgram::GetAccessTokenFailed.new(result["errmsg"])
+        return MiniProgram::ServiceResult.new(success: false, errors: result, message: result["errmsg"])
       end
 
-      redis.setex "mp-#{appid}-access-token",  1.5.hours.to_i, result["access_token"]
-      result["access_token"]
+      MiniProgram::ServiceResult.new(success: true, data: result)
     end
 
+    # 调用微信授权登录 api
+    #
+    #
     def login(code)
       api = "https://api.weixin.qq.com/sns/jscode2session"
       params = {
@@ -54,10 +84,10 @@ module MiniProgram
         api: #{api}
         result: #{result}
         ERROR
-        return MiniProgram::ServiceResult.new(errors: result, message: result["errmsg"], message_type: :error)
+        return MiniProgram::ServiceResult.new(errors: result, message: result["errmsg"])
       end
 
-      MiniProgram::ServiceResult.new(success: true, data: result.with_indifferent_access)
+      MiniProgram::ServiceResult.new(success: true, data: result)
     end
 
     # 发送订阅消息
@@ -68,12 +98,17 @@ module MiniProgram
 
       payload = msg.as_json.merge!(touser: open_id)
 
-      api = "https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=#{access_token}"
+      # 获取 access_token
+      get_token_result = get_access_token
+      if get_token_result.failure?
+        return get_token_result
+      end
 
+      api = "https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=#{get_token_result["access_token"]}"
       result = post(api, payload)
 
-      msg_logger.info("{params: #{payload}, response: #{result}}")
-      result.with_indifferent_access
+      msg_logger.info {"{params: #{payload}, response: #{result}}"}
+      MiniProgram::ServiceResult.new(success: true, data: result)
     end
 
     # 获取用户手机号
@@ -88,10 +123,12 @@ module MiniProgram
 
       phone_num = JSON.parse(data)["phoneNumber"]
 
-      MiniProgram::ServiceResult.new(success: true, data: {
-        open_id: open_id,
-        phone_num: phone_num
-      }.with_indifferent_access)
+      MiniProgram::ServiceResult.new(
+        success: true,
+        data: {
+          open_id: open_id,
+          phone_num: phone_num
+      })
     end
 
     def config
@@ -100,7 +137,7 @@ module MiniProgram
 
                           # 如果有挂载 WechatPayment 的 engine 时，使用里边的小程序配置
                           elsif Object.const_defined? "WechatPayment"
-                            [WechatPayment.sub_appid || WechatPayment.appid, WechatPayment.app_secret]
+                            [WechatPayment.sub_appid || WechatPayment.appid, WechatPayment.sub_app_secret || WechatPayment.app_secret]
                           else
                             [nil, nil]
                           end
