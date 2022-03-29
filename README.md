@@ -1,5 +1,5 @@
 # MiniProgram
-Short description and motivation.
+微信小程序 gem ，已废弃
 
 ## 开始
 
